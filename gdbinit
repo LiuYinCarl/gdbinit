@@ -3996,3 +3996,29 @@ end
 #
 #   Version 2
 #     Radix bugfix by elaine
+
+##########################################################
+# 退出并保留断点
+define qbp
+save breakpoints ./.gdb_bp
+quit
+end
+document qbp
+Exit and save the breakpoint
+end
+
+# 保留历史工作断点
+define sbp
+save breakpoints ./.gdb_bp
+end
+document sbp
+Save the historical work breakpoint
+end
+
+# 加载历史工作断点
+define lbp
+source ./.gdb_bp
+end
+document lbp
+Load the historical work breakpoint
+end
