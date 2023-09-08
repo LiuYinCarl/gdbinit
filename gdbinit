@@ -2,12 +2,13 @@
 #
 # DESCRIPTION: A user-friendly gdb configuration file, for x86/x86_64 and ARM platforms.
 #
-# REVISION : 8.0.5 (18/08/2013)
+# REVISION : 9.0 (23/06/2019)
 #
 # CONTRIBUTORS: mammon_, elaine, pusillus, mong, zhang le, l0kit,
 #               truthix the cyberpunk, fG!, gln
 #
-# FEEDBACK: http://reverse.put.as - reverser@put.as
+# FEEDBACK: https://reverse.put.as - reverser@put.as
+# GITHUB: https://github.com/gdbinit/Gdbinit
 #
 # NOTES: 'help user' in gdb will list the commands/descriptions in this file
 #        'context on' now enables auto-display of context screen
@@ -15,54 +16,23 @@
 # MAC OS X NOTES: If you are using this on Mac OS X, you must either attach gdb to a process
 #                 or launch gdb without any options and then load the binary file you want to analyse with "exec-file" option
 #                 If you load the binary from the command line, like $gdb binary-name, this will not work as it should
-#                 For more information, read it here http://reverse.put.as/2008/11/28/apples-gdb-bug/
+#                 For more information, read it here https://reverse.put.as/2008/11/28/apples-gdb-bug/
 #
-# UPDATE: This bug can be fixed in gdb source. Refer to http://reverse.put.as/2009/08/10/fix-for-apples-gdb-bug-or-why-apple-forks-are-bad/
-#         and http://reverse.put.as/2009/08/26/gdb-patches/ (if you want the fixed binary for i386)
+# UPDATE: This bug can be fixed in gdb source. Refer to https://reverse.put.as/2009/08/10/fix-for-apples-gdb-bug-or-why-apple-forks-are-bad/
+#         and https://reverse.put.as/2009/08/26/gdb-patches/ (if you want the fixed binary for i386)
 #
-#         An updated version of the patch and binary is available at http://reverse.put.as/2011/02/21/update-to-gdb-patches-fix-a-new-bug/
+#         An updated version of the patch and binary is available at https://reverse.put.as/2011/02/21/update-to-gdb-patches-fix-a-new-bug/
 #
 # iOS NOTES: iOS gdb from Cydia (and Apple's) suffer from the same OS X bug.
 #			 If you are using this on Mac OS X or iOS, you must either attach gdb to a process
 #            or launch gdb without any options and then load the binary file you want to analyse with "exec-file" option
 #            If you load the binary from the command line, like $gdb binary-name, this will not work as it should
-#            For more information, read it here http://reverse.put.as/2008/11/28/apples-gdb-bug/
+#            For more information, read it here https://reverse.put.as/2008/11/28/apples-gdb-bug/
 #
 # CHANGELOG: (older changes at the end of the file)
 #
-#   Version 8.0.6 (05/09/2013)
-#     - Add patch command to convert bytes to little-endian and patch memory
-#
-#   Version 8.0.5 (18/08/2013)
-#     - Add commands header and loadcmds to dump Mach-O header information
-#     - Other fixes and additions from previous commits
-#
-#   Version 8.0.4 (08/05/2013)
-#     - Detect automatically 32 or 64 bits archs using sizeof(void*). 
-#       Thanks to Tyilo for the simple but very effective idea!
-#     - Typo in hexdump command also fixed by vuquangtrong.
-#     - Add shortcuts to attach to VMware kernel debugging gdb stub (kernel32 and kernel64)
-#
-#   Version 8.0.3 (21/03/2013)
-#	  - Add option to colorize or not output (thanks to argp and skier for the request and ideas!)
-#     - Convert the escape codes into functions so colors can be easily customized
-#	  - Other enhancements available at git commit logs
-#       Thanks to Plouj, argp, xristos for their ideas and fixes!
-#
-#   Version 8.0.2 (31/07/2012)
-#     - Merge pull request from mheistermann to support local modifications in a .gdbinit.local file
-#     - Add a missing opcode to the stepo command
-#
-#   Version 8.0.1 (23/04/2012)
-#     - Small bug fix to the attsyntax and intelsyntax commands (changing X86 flavor variable was missing)
-#
-#   Version 8.0 (13/04/2012)
-#     - Merged x86/x64 and ARM versions
-#     - Added commands intelsyntax and attsyntax to switch between x86 disassembly flavors
-#     - Added new configuration variables ARM, ARMOPCODES, and X86FLAVOR
-#     - Code cleanups and fixes to the indentation
-#     - Bug fixes to some ARM related code
-#     - Added the dumpmacho command to memory dump the mach-o header to a file
+#   Version 9.0
+#     Fixes to make everything work with GNU/GDB 8.3+
 #
 #   TODO:
 #
@@ -76,6 +46,8 @@ set $COLOREDPROMPT = 1
 # color the first line of the disassembly - default is green, if you want to change it search for
 # SETCOLOR1STLINE and modify it :-)
 set $SETCOLOR1STLINE = 0
+# set to 0 to remove disassembly display (useful for scripted commands mass dumping)
+set $SHOWDISASM = 1
 # set to 0 to remove display of objectivec messages (default is 1)
 set $SHOWOBJECTIVEC = 1
 # set to 0 to remove display of cpu registers (default is 1)
@@ -93,7 +65,7 @@ set $SKIPEXECUTE = 0
 # 1 = use stepo (do not get into calls), 0 = use stepi (step into calls)
 set $SKIPSTEP = 1
 # show the ARM opcodes - change to 0 if you don't want such thing (in x/i command)
-set $ARMOPCODES = 1
+set $ARMOPCODES = 0
 # x86 disassembly flavor: 0 for Intel, 1 for AT&T
 set $X86FLAVOR = 0
 # use colorized output or not
@@ -101,6 +73,9 @@ set $USECOLOR = 1
 # to use with remote KDP
 set $KDP64BITS = -1
 set $64BITS = 0
+
+# macOS version works better with this setting off
+set startup-with-shell off
 
 set confirm off
 set verbose off
@@ -153,7 +128,7 @@ define color
  	else
  		# RED
 	 	if $arg0 == 1
-	 		echo \033[31m
+	 		echo \[\e[0;31m\]
 	 	else
 	 		# GREEN
 	 		if $arg0 == 2
@@ -197,7 +172,8 @@ end
 
 define color_bold
     if $USECOLOR == 1
-	   echo \033[1m
+	   #echo \033[1m
+       echo \[\e[1m\]
     end
 end
 
@@ -214,7 +190,7 @@ source ~/.gdbinit.local
 
 # can't use the color functions because we are using the set command
 if $COLOREDPROMPT == 1
-	set prompt \033[31mgdb$ \033[0m
+	set extended-prompt \[\e[0;31m\]gdb$ \[\e[0m\]
 end
 
 # Initialize these variables else comparisons will fail for coloring
@@ -311,7 +287,11 @@ define bp
     if $argc != 1
         help bp
     else
-        break $arg0
+        if $ASLR != 0
+            break ($arg0 + $ASLR)
+        else
+            break $arg0
+        end
     end
 end
 document bp
@@ -2028,7 +2008,7 @@ set $displayobjectivec = 0
 define context 
     color $COLOR_SEPARATOR
     if $SHOWCPUREGISTERS == 1
-	    printf "----------------------------------------"
+        printf "----------------------------------------"
 	    printf "----------------------------------"
 	    if ($64BITS == 1)
 	        printf "---------------------------------------------"
@@ -2043,7 +2023,7 @@ define context
     if $SHOWSTACK == 1
     	color $COLOR_SEPARATOR
 		if $ARM == 1
-       printf "[0x%08X]", $sp
+            printf "[0x%08X]", $sp
 		else
         if ($64BITS == 1)
 		        printf "[0x%04X:0x%016lX]", $ss, $rsp
@@ -2130,49 +2110,50 @@ define context
     if $SHOWDATAWIN == 1
         datawin
     end
-
-    color $COLOR_SEPARATOR
-    printf "--------------------------------------------------------------------------"
-    if ($64BITS == 1)
-	    printf "---------------------------------------------"
-	end
-	color $COLOR_SEPARATOR
-	color_bold
-    printf "[code]\n"
-    color_reset
-    set $context_i = $CONTEXTSIZE_CODE
-    if ($context_i > 0)
-        if ($SETCOLOR1STLINE == 1)	
-	        color $GREEN
-            if ($ARM == 1)
-                #       | $cpsr.t (Thumb flag)
-                x/i (unsigned int)$pc | (($cpsr >> 5) & 1)
-            else
-    	        x/i $pc
-            end
-	        color_reset
-	    else
-            if ($ARM == 1)
-                #       | $cpsr.t (Thumb flag)
-	              x/i (unsigned int)$pc | (($cpsr >> 5) & 1)
-            else
-                x/i $pc
-            end
-	    end
-        set $context_i--
-    end
-    while ($context_i > 0)
-        x /i
-        set $context_i--
+    if $SHOWDISASM == 1
+        color $COLOR_SEPARATOR
+        printf "--------------------------------------------------------------------------"
+        if ($64BITS == 1)
+	       printf "---------------------------------------------"
+	   end
+	   color $COLOR_SEPARATOR
+	   color_bold
+        printf "[code]\n"
+        color_reset
+        set $context_i = $CONTEXTSIZE_CODE
+        if ($context_i > 0)
+            if ($SETCOLOR1STLINE == 1)	
+	           color $GREEN
+                if ($ARM == 1)
+                    #       | $cpsr.t (Thumb flag)
+                    x/i (unsigned int)$pc | (($cpsr >> 5) & 1)
+                else
+    	            x/i $pc
+                end
+	           color_reset
+	       else
+                if ($ARM == 1)
+                    #       | $cpsr.t (Thumb flag)
+	                 x/i (unsigned int)$pc | (($cpsr >> 5) & 1)
+                else
+                    x/i $pc
+                end
+	       end
+            set $context_i--
+        end
+        while ($context_i > 0)
+            x /i
+            set $context_i--
+        end
     end
     color $COLOR_SEPARATOR
     printf "----------------------------------------"
     printf "----------------------------------------"
     if ($64BITS == 1)
         printf "---------------------------------------------\n"
-	else
-	    printf "\n"
-	end
+    else
+        printf "\n"
+    end
     color_reset
 end
 document context
@@ -3604,6 +3585,14 @@ end
 
 
 # enable commands for different displays
+define enabledisasm
+    set $SHOWDISASM = 1
+end
+document enabledisasm
+Syntax: enabledisasm
+| Enable disassembly display.
+end
+
 define enableobjectivec
 	set $SHOWOBJECTIVEC = 1
 end
@@ -3641,6 +3630,14 @@ end
 
 
 # disable commands for different displays
+define disabledisasm
+    set $SHOWDISASM = 0
+end
+document disabledisasm
+Syntax: disabledisasm
+| Disable disassembly display.
+end
+
 define disableobjectivec
 	set $SHOWOBJECTIVEC = 0
 end
@@ -3831,6 +3828,39 @@ end
 #EOF
 
 # Older change logs:
+#   Version 8.0.6 (05/09/2013)
+#     - Add patch command to convert bytes to little-endian and patch memory
+#
+#   Version 8.0.5 (18/08/2013)
+#     - Add commands header and loadcmds to dump Mach-O header information
+#     - Other fixes and additions from previous commits
+#
+#   Version 8.0.4 (08/05/2013)
+#     - Detect automatically 32 or 64 bits archs using sizeof(void*). 
+#       Thanks to Tyilo for the simple but very effective idea!
+#     - Typo in hexdump command also fixed by vuquangtrong.
+#     - Add shortcuts to attach to VMware kernel debugging gdb stub (kernel32 and kernel64)
+#
+#   Version 8.0.3 (21/03/2013)
+#     - Add option to colorize or not output (thanks to argp and skier for the request and ideas!)
+#     - Convert the escape codes into functions so colors can be easily customized
+#     - Other enhancements available at git commit logs
+#       Thanks to Plouj, argp, xristos for their ideas and fixes!
+#
+#   Version 8.0.2 (31/07/2012)
+#     - Merge pull request from mheistermann to support local modifications in a .gdbinit.local file
+#     - Add a missing opcode to the stepo command
+#
+#   Version 8.0.1 (23/04/2012)
+#     - Small bug fix to the attsyntax and intelsyntax commands (changing X86 flavor variable was missing)
+#
+#   Version 8.0 (13/04/2012)
+#     - Merged x86/x64 and ARM versions
+#     - Added commands intelsyntax and attsyntax to switch between x86 disassembly flavors
+#     - Added new configuration variables ARM, ARMOPCODES, and X86FLAVOR
+#     - Code cleanups and fixes to the indentation
+#     - Bug fixes to some ARM related code
+#     - Added the dumpmacho command to memory dump the mach-o header to a file
 #
 #   Version 7.4.4 (02/01/2012)
 #     - Added the "skip" command. This will jump to the next instruction after EIP/RIP without executing the current one.
